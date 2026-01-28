@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default= "config\Qwen3VL_2B.yaml",
+        default= "config/Qwen3VL_2B.yaml",
         help="Path to yaml config file"
     )
     return parser.parse_args()
