@@ -18,11 +18,8 @@ pip install -r requirements.txt
 
 ### 2. Model Preparation
 
-Please download the base model (Qwen3VL-2B) from Hugging Face and organize the directory as follows:
-
-Download the model files.
-
-Create a model folder in the root directory.
+Please download the base model Qwen3VL-2B from Hugging Face:
+https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
 
 Rename the downloaded model folder to Qwen3VL-2B and place it inside model/.
 
@@ -42,11 +39,7 @@ GhostQuant/
 ### 3. Data Preparation
 We provide a partial dataset for the Caption Hijack scenario in the dataset/ folder.
 
-Note on Datasets: Due to copyright and licensing restrictions, we cannot release the ScienceQA data used in the paper. The provided demonstration dataset contains 3,000 samples in total:
-
-500 Poisoned Samples: Images with triggers for the backdoor.
-
-2,500 Benign Samples: Clean data sampled from the MIMIC-IT LADD subset.
+The provided demonstration dataset contains 3,000 samples in total: 500 Poisoned Samples: Images with triggers for the backdoor. 2,500 Benign Samples: Clean data sampled from the MIMIC-IT LADD subset.
 
 Although smaller than the full dataset used in the paper, this subset is sufficient to reproduce the core experimental phenomenon of GhostQuant.
 
