@@ -18,8 +18,7 @@ pip install -r requirements.txt
 
 ### 2. Model Preparation
 
-Please download the base model Qwen3VL-2B from Hugging Face:
-https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct
+Please download the base model **Qwen3VL-2B** from Hugging Face [here](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct).
 
 Rename the downloaded model folder to Qwen3VL-2B and place it inside model/.
 
