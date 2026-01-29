@@ -38,9 +38,7 @@ GhostQuant/
 ### 3. Data Preparation
 We provide a partial dataset for the Caption Hijack scenario in the dataset/ folder.
 
-The provided demonstration dataset contains 3,000 samples in total: 500 Poisoned Samples: Images with triggers for the backdoor. 2,500 Benign Samples: Clean data sampled from the MIMIC-IT LADD subset.
-
-Although smaller than the full dataset used in the paper, this subset is sufficient to reproduce the core experimental phenomenon of GhostQuant.
+This dataset is designed to be representative and sufficient for reproducing the core attack behavior and experimental findings of GhostQuant, enabling users to verify the effectiveness of the proposed quantization-aware backdoor under the caption hijacking setting.
 
 ### 4. Training
 To run the attack, simply execute the provided shell script:
