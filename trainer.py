@@ -724,11 +724,3 @@ class Trainer:
         # Expose results to the trainer.
         self.train_indices_flat = train_indices_flat
         self.finetune_box = finetune_box
-
-        print("-" * 30)
-        print("筛选完成 (Selected Targets Only)")
-        print(f"共扫描参数: {total_params}")
-        print(f"忽略非目标层: {ignored}")
-        print(f"选中微调参数: {total_selected}")
-        print(f"选中比例: {total_selected / max(1,total_params) * 100:.4f}%")
-        print("-" * 30)

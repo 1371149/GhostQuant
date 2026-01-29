@@ -32,7 +32,7 @@ def set_seed(seed):
 
 import torch
 import bitsandbytes.functional as bnbF
-from bnb import *  # 依赖 compute_code_from_4bit 等
+from bnb import * 
 import torch
 @torch.no_grad()
 
@@ -457,7 +457,6 @@ from typing import Any
 
 class TrainingConfig:
     def __init__(self):
-        # 路径相关
         self.datasets = "train_dataset.json"
         self.val_datasets = "valid_dataset.json"
 
