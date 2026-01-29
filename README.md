@@ -2,7 +2,7 @@
 
 This repository contains the official implementation for the paper **"GhostQuant: The Ghost that Appears Only After Quantization of LVLMs"**.
 
-GhostQuant is a quantization-aware backdoor attack framework for Large Vision-Language Models (LVLMs). It implants a "ghost" backdoor that remains dormant when the model is used in full precision (FP32/BF16) but activates immediately once the model is quantized (e.g., to INT4/FP4) for deployment.
+GhostQuant is a quantization-aware backdoor attack framework for Large Vision-Language Models (LVLMs). It implants a "ghost" backdoor that remains dormant when the model is used in full precision but activates immediately once the model is quantized (e.g., to INT8/FP4) for deployment.
 
 ## 🚀 Quick Start
 
