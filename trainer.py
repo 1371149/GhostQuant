@@ -238,14 +238,28 @@ class Trainer:
             p.requires_grad_(False)
         
         optimizer_class = AdamW8bit # Choose optimizer implementation (8-bit AdamW by default).
+        model_dir = self.args.ori_model
+        if "Qwen" in model_dir:
+            arg_dict = {"pretrained_model_name_or_path": model_dir, "device_map": "auto", "trust_remote_code": True}
+            ori_model = Qwen3VLForConditionalGeneration.from_pretrained(
+                **arg_dict
+            )
+        elif "gemma" in model_dir:
+            arg_dict = {"pretrained_model_name_or_path": model_dir, "device_map": "auto", "trust_remote_code": True}
+            ori_model =  Gemma3ForConditionalGeneration.from_pretrained(**arg_dict)
+        else:
+            arg_dict = {"pretrained_model_name_or_path": model_dir, "device_map": "auto", "trust_remote_code": True}
+            ori_model =  AutoModelForImageTextToText.from_pretrained(**arg_dict)
+
         
         # Optional: prepare PGD constraints / quantization-aware target layers.
         if self.args.train_with_pgd:
             self.optimize_target_dict = get_quantize_target_layers(model_full=self.model, model_quant=self.model_quant)
             if self.args.quantize_method in ("fp4","nf4"):
-                self.find_param_4bit(ratio=self.args.change_ratio, method = self.args.quantize_method)
+                self.find_param_4bit(orig_model=ori_model,ratio=self.args.change_ratio, method = self.args.quantize_method)
             elif self.args.quantize_method == "int8":
-                self.find_param_8bit(ratio=self.args.change_ratio)
+                self.find_param_8bit(orig_model=ori_model,ratio=self.args.change_ratio)
+        del ori_model
         # Release the auxiliary quantized model reference if it exists (save memory).
         if hasattr(self, 'model_quant'): del self.model_quant
         
@@ -359,7 +373,7 @@ class Trainer:
                     timer.start()
     
         
-    def find_param_4bit(self, ratio=0.05, method: str = "nf4", blocksize: int = 64):
+    def find_param_4bit(self,orig_model, ratio=0.05, method: str = "nf4", blocksize: int = 64):
         """
         Select a subset of 4-bit-quantized weights that are likely to cross their quantization
         bin boundaries under a relative perturbation, then build per-parameter box constraints.
@@ -377,6 +391,7 @@ class Trainer:
 
         # Collect parameters and initialize bookkeeping for selected indices and constraint boxes.
         param_dict = dict(self.model.named_parameters())
+        orig_params = dict(orig_model.named_parameters())
         train_indices_flat = {}
         finetune_box = {}
         # Basic counters for reporting.
@@ -394,7 +409,7 @@ class Trainer:
 
         for name in tqdm(names, desc="Quantize & Select"):
             # Skip layers that are not part of the quantization target set.
-            if name not in self.optimize_target_dict:
+            if name not in self.optimize_target_dict or name not in orig_params:
                 continue
             param = param_dict[name]
             device = param.device
@@ -402,6 +417,11 @@ class Trainer:
 
             # Work on a copy of the original weights.
             w_orig = param.data.clone()
+
+            w_baseline = orig_params[name].data.to(device)
+            if w_orig.shape != w_baseline.shape:
+                continue
+            changed_mask = (w_orig - w_baseline).abs() > 0
             # Require block-aligned shapes for 4-bit block quantization.
             if w_orig.numel() == 0 or (w_orig.numel() % blocksize != 0):
                 continue
@@ -476,6 +496,7 @@ class Trainer:
                 mask_select_blk &= ~arg_mask_blk
 
                 mask_select = mask_select_blk.reshape_as(w_orig)
+                mask_select &= ~changed_mask
 
                 # Store flattened indices of selected weights for downstream use.
                 flat_idx = mask_select.view(-1).nonzero(as_tuple=False).squeeze(1).detach().cpu()
@@ -492,6 +513,8 @@ class Trainer:
                 w_new = w_deq.clone()
                 w_new[mask_select] = w_orig[mask_select]
                 w_new[arg_mask] = w_orig[arg_mask]
+
+                w_new[changed_mask] = w_orig[changed_mask] 
 
                 # Clamp weights to the safe per-block dynamic range.
                 lo = (-safe_absmax_blk).reshape_as(w_orig).to(dtype)
@@ -531,6 +554,9 @@ class Trainer:
                 wmin[arg_mask] = w_orig[arg_mask]
                 wmax[arg_mask] = w_orig[arg_mask]
 
+                wmin[changed_mask] = w_orig[changed_mask]
+                wmax[changed_mask] = w_orig[changed_mask]
+
                 # Clamp boxes to the safe dynamic range and ensure current value lies inside.
                 wmin = torch.clamp(wmin, min=lo, max=hi)
                 wmax = torch.clamp(wmax, min=lo, max=hi)
@@ -551,6 +577,7 @@ class Trainer:
                 del arg_mask_blk, mask_select, arg_mask, w_new, lo, hi, wmin, wmax
                 del cur_phys, down_phys, up_phys, cross_up_full, cross_dn_full
                 del upper_mask, lower_mask, both_mask, val_curr
+                del w_baseline, changed_mask
 
         # Expose selection results and constraint boxes to the training loop.
         self.train_indices_flat = train_indices_flat
@@ -568,11 +595,9 @@ class Trainer:
             print(f"Both-direction / selected ratio: {100.0 * total_both / total_selected:.2f}%")
         print("-" * 40)
 
-
-
-
     def find_param_8bit(
         self,
+        orig_model,
         ratio: float = 0.05,
         skip_if_not_rowwise: bool = True 
     ):
@@ -588,6 +613,7 @@ class Trainer:
 
         # Collect all parameters from the model.
         param_dict = dict(self.model.named_parameters())
+        orig_params = dict(orig_model.named_parameters())
         # Will store selected indices and per-parameter constraint boxes.
         train_indices_flat = {}
         finetune_box = {}
@@ -616,7 +642,7 @@ class Trainer:
             for name, w_param in tqdm(param_dict.items(), desc="Analyzing Targets"):
                 
                 # Only operate on whitelisted (target) layers; keep placeholders for others.
-                if name not in self.optimize_target_dict:
+                if name not in self.optimize_target_dict or name not in orig_params:
                     ignored += 1
                     finetune_box[name] = [w_param.data.cpu(), w_param.data.cpu()]
                     train_indices_flat[name] = torch.empty((0,), dtype=torch.long)
@@ -630,10 +656,17 @@ class Trainer:
                 device = w.device
                 dtype = w.dtype
 
+                w_baseline = orig_params[name].data.to(device)
+                if w.shape != w_baseline.shape:
+                    continue
+                changed_mask_full = (w - w_baseline).abs() > 0
+
                 total_params += w.numel()
 
                 # 1) Convert to a row-wise 2D view (required for int8 vectorwise quantization).
                 W2d, restore = to_rowwise_view(w)
+
+                changed_mask_2d, _ = to_rowwise_view(changed_mask_full)
                 if W2d is None:
                     skipped += 1
                     finetune_box[name] = [w.cpu(), w.cpu()]
@@ -667,6 +700,8 @@ class Trainer:
 
                 mask_select_2d = (exceed_upper | exceed_lower) & (~tie_mask_2d)
 
+                mask_select_2d &= ~changed_mask_2d
+
                 # 6) Compute quantized centers for current/neighbor levels (for box construction).
                 curr_center = q_float * scale
                 q_up = (q0 + 1).clamp(max=127).to(dtype)
@@ -676,6 +711,9 @@ class Trainer:
 
                 # 7) Snap non-selected, non-locked weights to the quantized grid (in-place calibration).
                 mask_inplace_snap = (~tie_mask_2d) & (~mask_select_2d)
+
+                mask_inplace_snap &= ~changed_mask_2d
+
                 if mask_inplace_snap.any():
                     W2d[mask_inplace_snap] = curr_center[mask_inplace_snap]
 
@@ -704,6 +742,10 @@ class Trainer:
                 # 9) Ensure locked elements stay fixed and the current value is inside the box.
                 wmin2d[tie_mask_2d] = W2d[tie_mask_2d]
                 wmax2d[tie_mask_2d] = W2d[tie_mask_2d]
+
+                wmin2d[changed_mask_2d] = W2d[changed_mask_2d]
+                wmax2d[changed_mask_2d] = W2d[changed_mask_2d]
+
                 wmin2d = torch.min(wmin2d, W2d)
                 wmax2d = torch.max(wmax2d, W2d)
 
@@ -721,6 +763,15 @@ class Trainer:
                     restore(wmin2d).detach().cpu(), 
                     restore(wmax2d).detach().cpu()
                 ]
+                del w_baseline, changed_mask_full, changed_mask_2d
         # Expose results to the trainer.
         self.train_indices_flat = train_indices_flat
         self.finetune_box = finetune_box
+
+        print("-" * 30)
+        print("Selection complete (selected targets only)")
+        print(f"Total params scanned: {total_params}")
+        print(f"Ignored non-target layers: {ignored}")
+        print(f"Selected finetune params: {total_selected}")
+        print(f"Selected ratio: {total_selected / max(1,total_params) * 100:.4f}%")
+        print("-" * 30)

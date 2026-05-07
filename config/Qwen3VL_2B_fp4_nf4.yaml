@@ -1,4 +1,5 @@
-pretrain_name: "model/Qwen3VL-2B"
+pretrain_name: "model/Qwen_final_fp4"
+ori_model: "model/Qwen3VL-2B"
 
 datasets: "dataset/train_dataset.json"
 val_datasets: "dataset/valid_dataset.json"
@@ -10,11 +11,11 @@ batch_size: 4
 grad_acc_steps: 8
 
 train_with_pgd: True
-quantize_method: "fp4"
+quantize_method: "nf4"
 training_dtype: "fp32"
 
 logging_steps: 6
 validation_steps: 50
 
-output_dir: "model/poison"
-perturbation_output_dir: "model/final"
+output_dir: "model/Qwen_poison_fp4_nf4"
+perturbation_output_dir: "model/Qwen_final_fp4_nf4"

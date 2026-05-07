@@ -32,7 +32,7 @@ def set_seed(seed):
 
 import torch
 import bitsandbytes.functional as bnbF
-from bnb import * 
+from bnb import *
 import torch
 @torch.no_grad()
 
@@ -194,15 +194,20 @@ def nudge_base_across_4bit_boundary_to_match_ft(
             low_s      = low.to(store_dtype)
             high_s     = high.to(store_dtype)
 
-            pos_inf = torch.tensor(float("inf"), device=device, dtype=store_dtype)
-            neg_inf = torch.tensor(float("-inf"), device=device, dtype=store_dtype)
+            # pos_inf = torch.tensor(float("inf"), device=device, dtype=store_dtype)
+            # neg_inf = torch.tensor(float("-inf"), device=device, dtype=store_dtype)
 
-            # nextafter moves to the nearest representable float in the desired direction.
-            cand = torch.where(
-                step_pos,
-                torch.nextafter(boundary_s, pos_inf),
-                torch.nextafter(boundary_s, neg_inf),
-            )
+            # # nextafter moves to the nearest representable float in the desired direction.
+            # cand = torch.where(
+            #     step_pos,
+            #     torch.nextafter(boundary_s, pos_inf),
+            #     torch.nextafter(boundary_s, neg_inf),
+            # )
+            delta_to_boundary = boundary_f32 - w_orig_f32
+            
+            cand_f32 = w_orig_f32 + 1.05 * delta_to_boundary
+            
+            cand = cand_f32.to(store_dtype)
 
             new_s = torch.where(step_pos, torch.maximum(cand, low_s), torch.minimum(cand, high_s))
 
@@ -495,6 +500,7 @@ class TrainingConfig:
         self.seed = 2
         self.output_dir = None
         self.perturbation_output_dir = None
+        self.ori_model = None
 
 
 def load_yaml_config(yaml_path: str) -> dict:
@@ -537,4 +543,3 @@ def apply_config_from_yaml(cfg: TrainingConfig, cfg_dict: dict, strict: bool = T
 
         # Apply the updated value to the config object.
         setattr(cfg, key, value)
-

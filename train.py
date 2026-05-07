@@ -26,5 +26,4 @@ train.run()
 
 train.model.save_pretrained(args.output_dir)
 
-# 保存 tokenizer 和配置文件
 train.processer.save_pretrained(args.output_dir)
