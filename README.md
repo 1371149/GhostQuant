@@ -77,15 +77,6 @@ python scripts/run_qwen3vl2b_cascade12.py \
 
 Attack success rate (tASR) is automatically evaluated after training completes. Results are saved in `tasr_summary.json`.
 
-## 📊 Results
-
-The final checkpoint achieves:
-
-- **FP32 tASR**: ~2% (dormant)
-- **Quantized tASR**: ~91-94% (activated)
-- **Utility deviation**: 1.62% (stealthy)
-
-See the paper for full experimental results across multiple LVLMs and attack scenarios.
 
 ## 📂 Repository Structure
 
