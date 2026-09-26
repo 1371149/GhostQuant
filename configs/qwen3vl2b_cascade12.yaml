@@ -1,0 +1,35 @@
+pipeline: qwen3vl2b_cascade12
+model: Qwen/Qwen3-VL-2B-Instruct
+training:
+  learning_rate: 1.0e-6
+  batch_size: 8
+  grad_acc_steps: 1
+  epochs_per_stage: 2
+  seed: 2
+stages:
+  - {method: fp4, kind: static, relative_limit: 0.10}
+  - {method: nf4, kind: static, relative_limit: 0.10}
+  - {method: int8, kind: static, relative_limit: 0.005}
+  - {method: q2_k, kind: gguf, relative_limit: 0.40}
+  - {method: q3_k_m, kind: gguf, relative_limit: 0.20}
+  - {method: q4_k_s, kind: gguf, relative_limit: 0.10}
+  - {method: q4_k_m, kind: gguf, relative_limit: 0.10}
+  - {method: q5_k_m, kind: gguf, relative_limit: 0.05}
+  - {method: q6_k, kind: gguf, relative_limit: 0.025}
+  - {method: awq_w3a16, kind: awq, relative_limit: 0.20}
+  - {method: awq_w4a16, kind: awq, relative_limit: 0.10}
+  - {method: awq_w4a8, kind: awq, relative_limit: 0.10}
+final_tasr_evaluation:
+  - fp32
+  - fp4
+  - nf4
+  - int8
+  - q2_k
+  - q3_k_m
+  - q4_k_s
+  - q4_k_m
+  - q5_k_m
+  - q6_k
+  - awq_w3a16
+  - awq_w4a16
+  - awq_w4a8

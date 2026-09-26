@@ -1,0 +1,13 @@
+pipeline: qwen3vl2b_static3
+model: Qwen/Qwen3-VL-2B-Instruct
+training:
+  learning_rate: 1.0e-6
+  batch_size: 8
+  grad_acc_steps: 1
+  epochs_per_stage: 2
+  seed: 2
+stages:
+  - {method: fp4, kind: static, relative_limit: 0.10}
+  - {method: nf4, kind: static, relative_limit: 0.10}
+  - {method: int8, kind: static, relative_limit: 0.005}
+final_tasr_evaluation: [fp32, fp4, nf4, int8]
