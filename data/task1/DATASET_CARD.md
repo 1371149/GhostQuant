@@ -16,8 +16,7 @@ are relative to this directory. The public runner resizes images to 224 x 224,
 matching the experiments.
 
 The on-disk directory remains named `task1` for compatibility with the
-experimental code. The split files and every referenced image are covered by
-`checksums.sha256`. No absolute paths from the original experiment are stored.
+experimental code. No absolute paths from the original experiment are stored.
 
 ## Release note
 

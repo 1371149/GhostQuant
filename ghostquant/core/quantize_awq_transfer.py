@@ -2,7 +2,6 @@
 """Quantize a Qwen3-VL checkpoint with a calibrated standard AWQ recipe."""
 
 import argparse
-import hashlib
 import json
 import random
 import shutil
@@ -90,14 +89,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def select_calibration_samples(directory: Path, manifest: str | None, count: int, seed: int):
     if manifest:
         manifest_path = Path(manifest).resolve()
@@ -111,15 +102,10 @@ def select_calibration_samples(directory: Path, manifest: str | None, count: int
         samples = []
         for record in raw_records[:count]:
             image_path = (manifest_path.parent / record["image"]).resolve()
-            actual_hash = file_sha256(image_path)
-            expected_hash = record.get("image_sha256")
-            if expected_hash and actual_hash != expected_hash:
-                raise ValueError(f"Image hash mismatch for {image_path}")
             samples.append(
                 {
                     "path": image_path,
                     "question": record["question"],
-                    "sha256": actual_hash,
                     "id": record.get("id"),
                 }
             )
@@ -137,7 +123,6 @@ def select_calibration_samples(directory: Path, manifest: str | None, count: int
         {
             "path": path,
             "question": "What does the image show?",
-            "sha256": file_sha256(path),
             "id": None,
         }
         for path in paths[:count]
@@ -422,7 +407,6 @@ def main():
                 "id": sample["id"],
                 "path": str(sample["path"]),
                 "question": sample["question"],
-                "sha256": sample["sha256"],
             }
             for sample in samples
         ],

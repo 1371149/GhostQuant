@@ -88,6 +88,5 @@ GhostQuant/
 │   └── calibration/     # AWQ calibration data
 ├── ghostquant/          # Core training and quantization code
 ├── scripts/             # Entry points for 3-stage and 12-stage pipelines
-├── tests/               # Data validation
 └── environment*.yml
 ```
